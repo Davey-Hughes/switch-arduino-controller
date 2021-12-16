@@ -4,4 +4,6 @@
 *.eep
 *.o
 *.map
+.ccls*
+tags
 src/usb-iface/obj

@@ -22,6 +22,21 @@
 void init_led_button(void);
 
 /*
+ * Initializes interrupts used for getting button presses
+ */
+void init_interrupts(void);
+
+/*
+ * Sleep until the confirm button is pressed
+ */
+void wait_for_confirm(void);
+
+/*
+ * Select a number by pressing the accumulator button n times and then the
+ * confirm button
+ */
+uint8_t select_number(void);
+/*
  * Wait the specified amount of time for the button to be pressed. If the
  * button is not pressed, this function returns false. If the button, is
  * pressed, this function waits for the button to be released, and returns
@@ -49,6 +64,6 @@ uint8_t delay(uint16_t led_on_time_ms, uint16_t led_off_time_ms,
 /*
  * Emit a brief beep the buzzer.
  */
-void beep(void);
+void beep(uint16_t tone);
 
 #endif

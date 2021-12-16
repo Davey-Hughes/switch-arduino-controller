@@ -2,13 +2,15 @@ CFLAGS=-Wall -Wextra -Werror=overflow -Werror=type-limits -std=c11 -Os -I src/us
 
 # Optionally add <prog>.hex here so it is built when make is invoked
 # without arguments.
-all: swsh.hex usb-iface.hex
+all: swsh.hex bdsp.hex usb-iface.hex
 	@echo "Build done. Use flash-<program name> to flash a file."
 
 # Put program definitions (.o => src/<prog>.elf) here
 # make <prog>.hex will generate the final program and make flash-<prog> will
 # flash it.
 src/swsh.elf: src/swsh/swsh.o src/lib/automation.o src/lib/automation-utils.o src/lib/user-io.o
+
+src/bdsp.elf: src/bdsp/bdsp.o src/lib/automation.o src/lib/automation-utils.o src/lib/user-io.o
 
 flash-%: %.hex
 	avrdude -p atmega328p -c avrispmkii -P usb -U flash:w:$<:i
@@ -33,7 +35,7 @@ UNO-dfu_and_usbserial_combined.hex:
 src/%.elf:
 	@[ "-n" "$^" ] || (echo "No source files specified to build $@; add a program definition at the top of the Makefile." >&2; exit 1)
 	avr-gcc -mmcu=atmega328p -flto -fuse-linker-plugin -Wl,--gc-sections -o $@ $^
-	
+
 %.o: %.c
 	avr-gcc $(CFLAGS) -mmcu=atmega328p -DF_CPU=16000000 -ffunction-sections -fdata-sections -flto -fuse-linker-plugin -o $@ -c $<
 

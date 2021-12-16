@@ -40,7 +40,7 @@ int main(void)
 	init_led_button();
 
 	/* Initial beep to confirm that the buzzer works */
-	beep();
+	beep(0);
 
 	/* Wait for the user to press the button (should be on the Switch main menu) */
 	count_button_presses(100, 100);
@@ -58,7 +58,7 @@ int main(void)
 		uint8_t count = count_button_presses(100, 900);
 
 		for (uint8_t i = 0 ; i < count ; i += 1) {
-			beep();
+			beep(0);
 			_delay_ms(100);
 		}
 
@@ -162,7 +162,7 @@ void max_raid_menu(void)
 		uint8_t subfeature = count_button_presses(500, 500);
 
 		for (uint8_t i = 0 ; i < subfeature ; i += 1) {
-			beep();
+			beep(0);
 			_delay_ms(200);
 		}
 
@@ -287,7 +287,7 @@ void repeat_change_raid_initial_confirm(void)
 {
 	for (;;) {
 		/* Ask the user to look at the Pokémon in the Max Raid Battle */
-		beep();
+		beep(0);
 
 		/* Do the user wants to do this Raid? */
 		if (wait_for_button_timeout(250, 250, 5000)) {
@@ -320,7 +320,7 @@ void light_pillar_setup(void)
 
 	for (;;) {
 		/* Ask the user to look at the light pillar color */
-		beep();
+		beep(0);
 
 		/* Drop the Wishing Piece in the den */
 		use_wishing_piece_and_pause();
@@ -535,7 +535,7 @@ void auto_breeding(void)
 		if (cycle_idx < (sizeof(egg_cycles) / sizeof(*egg_cycles))) {
 			/* Selection OK, beep once per press */
 			for (uint8_t i = 0 ; i <= cycle_idx ; i += 1) {
-				beep();
+				beep(0);
 				_delay_ms(200);
 			}
 
@@ -763,7 +763,7 @@ void release_full_boxes(void)
 
 	for (;;) {
 		/* Wait for user confirmation */
-		beep();
+		beep(0);
 		if (count_button_presses(500, 500) > 1) {
 			/* User cancelled, we are done */
 			return;

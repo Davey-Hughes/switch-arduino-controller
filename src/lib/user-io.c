@@ -1,5 +1,7 @@
 #include "user-io.h"
 
+#include <avr/interrupt.h>
+#include <avr/sleep.h>
 #include <avr/io.h>
 #include <util/delay.h>
 
@@ -7,14 +9,19 @@
 #define PORTB_LED (1 << 5)
 
 /* Button on digital pin 12 port B */
-#define PORTB_BUTTON (1 << 4)
+#define PORTB_BUTTON_0 (1 << 4)
 
 /* Buzzer (digital pin 2) on port D */
 #define PORTD_BUZZER (1 << 2)
 
+/* Button on digital pin 3 port D */
+#define PORTB_BUTTON_1 (1 << 3)
+
 /* Button minimum hold time (ms) -- avoid counting bounces as presses */
 #define BUTTON_HOLD_TIME_MS 20
 
+volatile uint8_t changedbits;
+volatile uint8_t portbhistory = 0xFF;
 
 /* Structure to track button presses */
 struct button_info {
@@ -32,13 +39,84 @@ static uint8_t get_tracked_presses(const struct button_info* info);
 void init_led_button(void)
 {
 	/* Configure LED as output, buzzer as output, button as input */
-	DDRB = (DDRB | PORTB_LED) & (~PORTB_BUTTON);
+	DDRB |= PORTB_LED;
 	DDRD |= PORTD_BUZZER;
-
-	/* Enable pullup on button */
-	PORTB |= PORTB_BUTTON;
 }
 
+/* Initialize interrupts */
+void
+init_interrupts(void)
+{
+	/* register button pins as inputs */
+	DDRB &= ~PORTB_BUTTON_0 & ~PORTB_BUTTON_1;
+
+	/* enable pullup on button pins */
+	PORTB |= PORTB_BUTTON_0 | PORTB_BUTTON_1;
+
+
+	/* turn on interrups for port B pins and mask the pins connected to buttons */
+	cli();
+	PCICR |= 0b00000001;
+	PCMSK0 |= PORTB_BUTTON_0 | PORTB_BUTTON_1;
+	sei();
+}
+
+/* Interrupt routine which saves the bits that were changed on Pin B */
+ISR(PCINT0_vect)
+{
+	changedbits = PINB ^ portbhistory;
+	portbhistory = PINB;
+}
+
+/* Wait for the confirm button to be pressed */
+void
+wait_for_confirm(void)
+{
+	while (1) {
+		set_sleep_mode(SLEEP_MODE_IDLE);
+		sleep_mode();
+
+		if (changedbits & PORTB_BUTTON_1 && portbhistory & PORTB_BUTTON_1) {
+			beep(1);
+			break;
+		}
+	}
+}
+
+/*
+ * Select a number by pressing the accumulator button n times and the pressing
+ * the confirm button
+ */
+uint8_t
+select_number(void)
+{
+	uint8_t val = 0;
+
+	while (1) {
+		set_sleep_mode(SLEEP_MODE_IDLE);
+		sleep_mode();
+
+		if (changedbits & PORTB_BUTTON_0 && portbhistory & PORTB_BUTTON_0) {
+			beep(0);
+			val++;
+		}
+
+		if (changedbits & PORTB_BUTTON_1 && portbhistory & PORTB_BUTTON_1) {
+			beep(1);
+			break;
+		}
+	}
+
+	_delay_ms(200);
+
+	for (uint8_t i = 0; i < val; ++i) {
+		beep(2);
+		_delay_ms(100);
+	}
+
+
+	return val;
+}
 
 /* Wait the specified amount of time for the button to be pressed. */
 bool wait_for_button_timeout(uint16_t led_on_time_ms, uint16_t led_off_time_ms,
@@ -150,12 +228,45 @@ uint8_t delay(uint16_t led_on_time_ms, uint16_t led_off_time_ms,
 }
 
 
-/* Emit a brief beep the buzzer. */
-void beep(void)
+/*
+ * Emit a brief beep the buzzer.
+ *
+ * Multiple tones can be customized depending on the on/off delay
+ */
+void
+beep(uint16_t tone)
 {
-	PORTD |= PORTD_BUZZER;
-	_delay_ms(1);
-	PORTD &= ~PORTD_BUZZER;
+	for (uint8_t i = 0; i < 50 / (tone + 1); ++i) {
+		PORTD |= PORTD_BUZZER;
+		switch (tone)
+		{
+		case 0:
+			_delay_ms(1);
+			break;
+		case 1:
+			_delay_ms(2);
+			break;
+		case 2:
+			_delay_ms(2);
+			break;
+		}
+
+		PORTD &= ~PORTD_BUZZER;
+
+		switch (tone)
+		{
+		case 0:
+			_delay_ms(1);
+			break;
+		case 1:
+			_delay_ms(1);
+			break;
+		case 2:
+			_delay_ms(2);
+			break;
+		}
+
+	}
 }
 
 
@@ -166,7 +277,7 @@ void beep(void)
  */
 void track_button(struct button_info* info)
 {
-	bool button_held = ((PINB & PORTB_BUTTON) == 0);
+	bool button_held = ((PINB & PORTB_BUTTON_0) == 0);
 
 	if (button_held) {
 		/* The button is held; increment the hold time */
@@ -194,7 +305,7 @@ uint8_t get_tracked_presses(const struct button_info* info)
 	uint8_t count = info->count;
 
 	/* Wait for the button to be released */
-	while ((PINB & PORTB_BUTTON) == 0) {
+	while ((PINB & PORTB_BUTTON_0) == 0) {
 		/* Nothing */
 	}
 
@@ -206,4 +317,3 @@ uint8_t get_tracked_presses(const struct button_info* info)
 
 	return count;
 }
-
